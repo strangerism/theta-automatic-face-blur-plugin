@@ -30,7 +30,7 @@ import com.theta360.automaticfaceblur.network.model.responses.StatusResponse;
 import com.theta360.automaticfaceblur.network.model.values.Errors;
 import com.theta360.automaticfaceblur.network.model.values.State;
 import com.theta360.automaticfaceblur.network.model.values.Status;
-import com.theta360.automaticfaceblur.task.CheckStatusTask;
+import com.theta360.automaticfaceblur.task.CheckImageStatusTask;
 import com.theta360.automaticfaceblur.task.GetOptionsTask;
 import com.theta360.automaticfaceblur.task.ImageProcessorTask;
 import com.theta360.automaticfaceblur.task.SetOptionsTask;
@@ -60,7 +60,7 @@ public class MainActivity extends PluginActivity {
     private byte[] mPreviewByteArray;
     private SetOptionsTask mSetOptionsTask;
     private GetOptionsTask mGetOptionsTask;
-    private CheckStatusTask mCheckStatusTask;
+    private CheckImageStatusTask mCheckImageStatusTask;
     private WebServer mWebServer;
     private UpdatePreviewTask mUpdatePreviewTask;
 
@@ -231,9 +231,9 @@ public class MainActivity extends PluginActivity {
     };
 
     /**
-     * CheckStatusTask Callback.
+     * CheckImageStatusTask Callback.
      */
-    CheckStatusTask.Callback mCheckStatusTaskCallback = new CheckStatusTask.Callback() {
+    CheckImageStatusTask.Callback mCheckImageStatusTaskCallback = new CheckImageStatusTask.Callback() {
         @Override
         public void onSendCommand(String responseData, AsyncHttpServerResponse response,
                                   CommandsRequest commandsRequest,
@@ -245,7 +245,7 @@ public class MainActivity extends PluginActivity {
                 } else {
                     mWebServer.sendError(response, errors, commandsName);
                 }
-                mCheckStatusTask = null;
+                mCheckImageStatusTask = null;
             }
         }
     };
@@ -393,15 +393,15 @@ public class MainActivity extends PluginActivity {
                         mWebServer.sendError(response, Errors.DEVICE_BUSY, commandsName);
                     }
                     break;
-                case CHECK_STATUS:
+                case CHECK_IMAGE_STATUS:
                     if (mTakePictureTask == null && mImageProcessorTask == null
                             && mGetOptionsTask == null) {
-                        mCheckStatusTask = new CheckStatusTask(mCheckStatusTaskCallback, response,
+                        mCheckImageStatusTask = new CheckImageStatusTask(mCheckImageStatusTaskCallback, response,
                                 commandsRequest);
-                        mCheckStatusTask.execute();
+                        mCheckImageStatusTask.execute();
                     } else {
                         mWebServer.sendError(response, Errors.DEVICE_BUSY, commandsName);
-                        mCheckStatusTask = null;
+                        mCheckImageStatusTask = null;
                     }
                     break;
                 default:

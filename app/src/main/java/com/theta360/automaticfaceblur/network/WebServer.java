@@ -238,13 +238,13 @@ public class WebServer {
     }
     public void sendTakePictureResponse(@NonNull AsyncHttpServerResponse response,
                                      @NonNull CommandsResponse commandsResponse, @NonNull String takePictureResponse) {
-/*        String json = new GsonBuilder().create().toJson(commandsResponse);
+        String json = new GsonBuilder().create().toJson(commandsResponse);
 
         if (commandsResponse.getProgress() != null) {
             Number completion = 100; //commandsResponse.getProgress().getCompletion();
 
             json = replaceCompletion(json, completion);
-        }*/
+        }
 
         sendJson(response, takePictureResponse);
     }
@@ -271,7 +271,7 @@ public class WebServer {
             results.put("fileUrl", fileUrl);
             results.put("blurredFileUrl", blurredFileUrl);
             jsonResponse.put("results", results);
-            jsonResponse.put("name", CommandsName.CHECK_STATUS);
+            jsonResponse.put("name", CommandsName.CHECK_IMAGE_STATUS);
             sendJson(response, jsonResponse.toString());
 
         } catch (JSONException e) {
@@ -309,6 +309,16 @@ public class WebServer {
         String json = new GsonBuilder().create().toJson(commandsResponse);
 
         AsyncHttpServerResponse res = response.code(400);
+        sendJson(res, json);
+    }
+
+    public void sendDeviceBusy(@NonNull AsyncHttpServerResponse response,
+                                     CommandsName commandsName) {
+        CommandsResponse commandsResponse = new CommandsResponse(commandsName, State.ERROR);
+        commandsResponse.setError(new ErrorObject(Errors.DEVICE_BUSY));
+        String json = new GsonBuilder().create().toJson(commandsResponse);
+
+        AsyncHttpServerResponse res = response.code(404);
         sendJson(res, json);
     }
 
@@ -356,6 +366,9 @@ public class WebServer {
                 break;
             case SERVICE_UNAVAILABLE:
                 sendServiceUnavailable(response, commandsName);
+                break;
+            case DEVICE_BUSY:
+                sendDeviceBusy(response, commandsName);
                 break;
             case UNEXPECTED:
                 sendUnexpected(response, commandsName);

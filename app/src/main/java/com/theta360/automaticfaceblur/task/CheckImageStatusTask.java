@@ -24,20 +24,20 @@ import com.theta360.automaticfaceblur.network.model.requests.CommandsRequest;
 import com.theta360.automaticfaceblur.network.model.values.Errors;
 
 /**
- * CheckStatusTask
+ * CheckImageStatusTask
  */
-public class CheckStatusTask extends AsyncTask<Void, Void, String> {
+public class CheckImageStatusTask extends AsyncTask<Void, Void, String> {
     private Callback mCallback;
     private AsyncHttpServerResponse mResponse;
     private CommandsRequest mCommandsRequest;
 
     /**
-     * Constructor of CheckStatusTask.
+     * Constructor of CheckImageStatusTask.
      *
      * @param callback executed
      */
-    public CheckStatusTask(Callback callback, AsyncHttpServerResponse response,
-                           CommandsRequest commandsRequest) {
+    public CheckImageStatusTask(Callback callback, AsyncHttpServerResponse response,
+                                CommandsRequest commandsRequest) {
         this.mCallback = callback;
         this.mResponse = response;
         this.mCommandsRequest = commandsRequest;
