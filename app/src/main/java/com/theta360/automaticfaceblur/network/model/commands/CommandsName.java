@@ -6,6 +6,7 @@ package com.theta360.automaticfaceblur.network.model.commands;
 public enum CommandsName {
     TAKE_PICTURE("camera.takePicture"),
     GET_STATUS("camera.getStatus"),
+    CHECK_STATUS("camera.image.checkStatus"),
     COMMANDS_EXECUTE("camera.commands.execute"),
     SET_OPTIONS("camera.setOptions"),
     GET_OPTIONS("camera.getOptions"),

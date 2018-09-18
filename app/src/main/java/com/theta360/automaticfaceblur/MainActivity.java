@@ -30,6 +30,7 @@ import com.theta360.automaticfaceblur.network.model.responses.StatusResponse;
 import com.theta360.automaticfaceblur.network.model.values.Errors;
 import com.theta360.automaticfaceblur.network.model.values.State;
 import com.theta360.automaticfaceblur.network.model.values.Status;
+import com.theta360.automaticfaceblur.task.CheckStatusTask;
 import com.theta360.automaticfaceblur.task.GetOptionsTask;
 import com.theta360.automaticfaceblur.task.ImageProcessorTask;
 import com.theta360.automaticfaceblur.task.SetOptionsTask;
@@ -59,6 +60,7 @@ public class MainActivity extends PluginActivity {
     private byte[] mPreviewByteArray;
     private SetOptionsTask mSetOptionsTask;
     private GetOptionsTask mGetOptionsTask;
+    private CheckStatusTask mCheckStatusTask;
     private WebServer mWebServer;
     private UpdatePreviewTask mUpdatePreviewTask;
 
@@ -160,7 +162,7 @@ public class MainActivity extends PluginActivity {
         }
 
         @Override
-        public void onSendCommand(AsyncHttpServerResponse response, CommandsRequest commandsRequest,
+        public void onSendCommand(String responseData, AsyncHttpServerResponse response, CommandsRequest commandsRequest,
                 Errors errors) {
             if (mWebServer != null && response != null && commandsRequest != null) {
                 CommandsName commandsName = commandsRequest.getCommandsName();
@@ -168,7 +170,7 @@ public class MainActivity extends PluginActivity {
                     CommandsResponse commandsResponse = new CommandsResponse(commandsName,
                             State.IN_PROGRESS);
                     commandsResponse.setProgress(new ProgressObject(0.00));
-                    mWebServer.sendCommandsResponse(response, commandsResponse);
+                    mWebServer.sendTakePictureResponse(response, commandsResponse, responseData);
                 } else {
                     mWebServer.sendError(response, errors, commandsName);
                 }
@@ -224,6 +226,26 @@ public class MainActivity extends PluginActivity {
                     mWebServer.sendError(response, errors, commandsName);
                 }
                 mGetOptionsTask = null;
+            }
+        }
+    };
+
+    /**
+     * CheckStatusTask Callback.
+     */
+    CheckStatusTask.Callback mCheckStatusTaskCallback = new CheckStatusTask.Callback() {
+        @Override
+        public void onSendCommand(String responseData, AsyncHttpServerResponse response,
+                                  CommandsRequest commandsRequest,
+                                  Errors errors) {
+            if (mWebServer != null && response != null && commandsRequest != null) {
+                CommandsName commandsName = commandsRequest.getCommandsName();
+                if (errors == null) {
+                    mWebServer.sendCheckStatusResponse(response, responseData);
+                } else {
+                    mWebServer.sendError(response, errors, commandsName);
+                }
+                mCheckStatusTask = null;
             }
         }
     };
@@ -369,6 +391,17 @@ public class MainActivity extends PluginActivity {
                         mWebServer.sendStatus(response, new StatusResponse(Status.BLURRING));
                     } else {
                         mWebServer.sendError(response, Errors.DEVICE_BUSY, commandsName);
+                    }
+                    break;
+                case CHECK_STATUS:
+                    if (mTakePictureTask == null && mImageProcessorTask == null
+                            && mGetOptionsTask == null) {
+                        mCheckStatusTask = new CheckStatusTask(mCheckStatusTaskCallback, response,
+                                commandsRequest);
+                        mCheckStatusTask.execute();
+                    } else {
+                        mWebServer.sendError(response, Errors.DEVICE_BUSY, commandsName);
+                        mCheckStatusTask = null;
                     }
                     break;
                 default:

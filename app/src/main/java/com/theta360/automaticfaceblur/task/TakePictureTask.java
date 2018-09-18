@@ -26,7 +26,7 @@ import timber.log.Timber;
 /**
  * TakePictureTask
  */
-public class TakePictureTask extends AsyncTask<Void, Void, HttpConnector.ShootResult> {
+public class TakePictureTask extends AsyncTask<Void, Void, HttpConnector.ShootResultDetailed> {
     private Callback mCallback;
     private AsyncHttpServerResponse mResponse;
     private CommandsRequest mCommandsRequest;
@@ -58,11 +58,11 @@ public class TakePictureTask extends AsyncTask<Void, Void, HttpConnector.ShootRe
      * @return Shooting request results
      */
     @Override
-    protected HttpConnector.ShootResult doInBackground(Void... params) {
+    protected HttpConnector.ShootResultDetailed doInBackground(Void... params) {
         CaptureListener postviewListener = new CaptureListener();
         HttpConnector camera = new HttpConnector();
 
-        return camera.takePicture(postviewListener);
+        return camera.takePicture2(postviewListener);
     }
 
     /**
@@ -71,21 +71,21 @@ public class TakePictureTask extends AsyncTask<Void, Void, HttpConnector.ShootRe
      * @param result shooting result
      */
     @Override
-    protected void onPostExecute(HttpConnector.ShootResult result) {
+    protected void onPostExecute(HttpConnector.ShootResultDetailed result) {
         Errors errors = null;
-        if (result == HttpConnector.ShootResult.FAIL_CAMERA_DISCONNECTED) {
+        if (result.resultState == HttpConnector.ShootResult.FAIL_CAMERA_DISCONNECTED) {
             Timber.d("takePicture:FAIL_CAMERA_DISCONNECTED");
             errors = Errors.UNEXPECTED;
-        } else if (result == HttpConnector.ShootResult.FAIL_STORE_FULL) {
+        } else if (result.resultState == HttpConnector.ShootResult.FAIL_STORE_FULL) {
             Timber.d("takePicture:FAIL_STORE_FULL");
             errors = Errors.NO_FREE_SPACE;
-        } else if (result == HttpConnector.ShootResult.FAIL_DEVICE_BUSY) {
+        } else if (result.resultState == HttpConnector.ShootResult.FAIL_DEVICE_BUSY) {
             Timber.d("takePicture:FAIL_DEVICE_BUSY");
             errors = Errors.SERVICE_UNAVAILABLE;
-        } else if (result == HttpConnector.ShootResult.SUCCESS) {
+        } else if (result.resultState == HttpConnector.ShootResult.SUCCESS) {
             Timber.d("takePicture:SUCCESS");
         }
-        mCallback.onSendCommand(mResponse, mCommandsRequest, errors);
+        mCallback.onSendCommand(result.responseData, mResponse, mCommandsRequest, errors);
     }
 
     @Override
@@ -160,7 +160,7 @@ public class TakePictureTask extends AsyncTask<Void, Void, HttpConnector.ShootRe
          * @param commandsRequest
          * @param errors
          */
-        void onSendCommand(AsyncHttpServerResponse response, CommandsRequest commandsRequest,
+        void onSendCommand(String responseData, AsyncHttpServerResponse response, CommandsRequest commandsRequest,
                 Errors errors);
 
         /**

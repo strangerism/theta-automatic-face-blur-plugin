@@ -19,6 +19,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -125,6 +126,82 @@ public class HttpConnector {
     }
 
     /**
+     * Take photo<p> After shooting, the status is checked for each {@link
+     * HttpConnector#CHECK_STATUS_PERIOD_MS} and the listener notifies you of the status.
+     *
+     * @param listener Post-shooting event listener
+     * @return Shooting request results
+     */
+    public ShootResultDetailed takePicture2(HttpEventListener listener) {
+        ShootResultDetailed result = new ShootResultDetailed(ShootResult.FAIL_DEVICE_BUSY, null);
+
+        // set capture mode to image
+        String errorMessage = setImageCaptureMode();
+        if (errorMessage != null) {
+            listener.onError(errorMessage);
+            result = new ShootResultDetailed(ShootResult.FAIL_DEVICE_BUSY, null);
+            return result;
+        }
+
+        HttpURLConnection postConnection = createHttpConnection("POST", "/osc/commands/execute");
+        JSONObject input = new JSONObject();
+        String responseData;
+        mHttpEventListener = listener;
+        InputStream is = null;
+
+        try {
+            // send HTTP POST
+            input.put("name", "camera.takePicture");
+
+            OutputStream os = postConnection.getOutputStream();
+            os.write(input.toString().getBytes());
+            postConnection.connect();
+            os.flush();
+            os.close();
+
+            is = postConnection.getInputStream();
+            responseData = InputStreamToString(is);
+
+            // parse JSON data
+            JSONObject output = new JSONObject(responseData);
+            String status = output.getString("state");
+            String commandId = output.getString("id");
+
+            if (status.equals("inProgress")) {
+                mCheckStatusTimer = new Timer(true);
+                CapturedTimerTask capturedTimerTask = new CapturedTimerTask();
+                capturedTimerTask.setCommandId(commandId);
+                mCheckStatusTimer.scheduleAtFixedRate(capturedTimerTask, CHECK_STATUS_PERIOD_MS,
+                        CHECK_STATUS_PERIOD_MS);
+                result = new ShootResultDetailed(ShootResult.SUCCESS, responseData);
+            } else if (status.equals("done")) {
+                JSONObject results = output.getJSONObject("results");
+                String lastFileId = results.getString("fileUri");
+
+                mHttpEventListener.onObjectChanged(lastFileId);
+                mHttpEventListener.onCompleted();
+                result = new ShootResultDetailed(ShootResult.SUCCESS, responseData);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            result = new ShootResultDetailed(ShootResult.FAIL_DEVICE_BUSY, null);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            result = new ShootResultDetailed(ShootResult.FAIL_DEVICE_BUSY, null);
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Check still image shooting status
      *
      * @param commandId Command ID for shooting still images
@@ -173,6 +250,72 @@ public class HttpConnector {
         }
 
         return capturedFileId;
+    }
+
+    /**
+     * Check still image shooting status
+     *
+     * @param commands
+     * @return responseData
+     */
+    public String checkStatus(String commands) {
+        HttpURLConnection postConnection = createHttpConnection("POST", "/osc/commands/status");
+        JSONObject input = new JSONObject();
+        String responseData = null;
+        String capturedFileId = null;
+        InputStream is = null;
+        //JSONObject results = null;
+        JSONObject response = null;
+        try {
+
+            JSONObject json = new JSONObject(commands);
+            Timber.d("json %s", json);
+            JSONObject jsonParameters = json.optJSONObject("parameters");
+            String id = (String) jsonParameters.get("id");
+            // send HTTP POST
+            input.put("id", id);
+
+            OutputStream os = postConnection.getOutputStream();
+            os.write(input.toString().getBytes());
+            postConnection.connect();
+            os.flush();
+            os.close();
+
+            is = postConnection.getInputStream();
+            responseData = InputStreamToString(is);
+
+            // parse JSON data
+            JSONObject output = new JSONObject(responseData);
+            String status = output.getString("state");
+
+            if (status.equals("done")) {
+                JSONObject results = output.getJSONObject("results");
+                capturedFileId = results.getString("fileUrl");
+                File fileUrl = new File(capturedFileId);
+                String filename = fileUrl.getName();
+                String path = fileUrl.getParent();
+                String blurredFileId = path + "/" + filename.replaceFirst("R", "B");
+                results.put("blurredFileUrl", blurredFileId);
+                output.put("results", results);
+                response = output;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return response.toString();
     }
 
     /**
@@ -412,8 +555,19 @@ public class HttpConnector {
     }
 
     /**
-     * ShootResult
+     * ShootResultDetailed
      */
+
+    public class ShootResultDetailed{
+        public ShootResult resultState;
+        public String responseData;
+
+        public ShootResultDetailed(ShootResult result, String responseData){
+            this.resultState = result;
+            this.responseData = responseData;
+        }
+    }
+
     public enum ShootResult {
         SUCCESS, FAIL_CAMERA_DISCONNECTED, FAIL_STORE_FULL, FAIL_DEVICE_BUSY
     }

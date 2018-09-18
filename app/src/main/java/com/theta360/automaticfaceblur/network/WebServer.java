@@ -16,8 +16,10 @@
 package com.theta360.automaticfaceblur.network;
 
 import android.content.Context;
+import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.text.format.Formatter;
 
 import com.google.gson.GsonBuilder;
 import com.koushikdutta.async.AsyncServer;
@@ -35,6 +37,7 @@ import com.theta360.automaticfaceblur.network.model.responses.StatusResponse;
 import com.theta360.automaticfaceblur.network.model.values.Errors;
 import com.theta360.automaticfaceblur.network.model.values.State;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.InetAddress;
@@ -77,6 +80,11 @@ public class WebServer {
     private static final String ICONWB_INCANDESCENT_2_CURRENT = "img/iconwb-incandescent-2-current.png";
     private static final String ICONWB_SHADE_CURRENT = "img/iconwb-shade-current.png";
     private static final String ICONWB_SUN_CURRENT = "img/iconwb-sun-current.png";
+
+    private static final String SET_SM360_SCRIPT = "js/sm360.js";
+    private static final String BTN_MODE_SM360 = "img/btn-mode-sm360.png";
+    // ENABLING CORS
+    private static final String CORS_OPTIONS = "Access-Control-Allow-Origin";
 
     private static final String HOST = "Host";
     private static final String APPLICATION_JSON = "application/json; charset=utf-8";
@@ -197,6 +205,10 @@ public class WebServer {
         mAsyncHttpServer.directory(mContext, "/" + ICONWB_INCANDESCENT_2_CURRENT, ICONWB_INCANDESCENT_2_CURRENT);
         mAsyncHttpServer.directory(mContext, "/" + ICONWB_SHADE_CURRENT, ICONWB_SHADE_CURRENT);
         mAsyncHttpServer.directory(mContext, "/" + ICONWB_SUN_CURRENT, ICONWB_SUN_CURRENT);
+
+        mAsyncHttpServer.directory(mContext, "/" + SET_SM360_SCRIPT, SET_SM360_SCRIPT);
+        mAsyncHttpServer.directory(mContext, "/" + BTN_MODE_SM360, BTN_MODE_SM360);
+    
         mAsyncServer = new AsyncServer();
         mAsyncServer.listen(inetAddress, HTTP_PORT, mAsyncHttpServer.getListenCallback());
     }
@@ -224,7 +236,18 @@ public class WebServer {
 
         sendJson(response, json);
     }
+    public void sendTakePictureResponse(@NonNull AsyncHttpServerResponse response,
+                                     @NonNull CommandsResponse commandsResponse, @NonNull String takePictureResponse) {
+/*        String json = new GsonBuilder().create().toJson(commandsResponse);
 
+        if (commandsResponse.getProgress() != null) {
+            Number completion = 100; //commandsResponse.getProgress().getCompletion();
+
+            json = replaceCompletion(json, completion);
+        }*/
+
+        sendJson(response, takePictureResponse);
+    }
     public void sendStatus(@NonNull AsyncHttpServerResponse response, @NonNull StatusResponse statusResponse) {
         sendJson(response, new GsonBuilder().create().toJson(statusResponse));
     }
@@ -232,6 +255,28 @@ public class WebServer {
     public void sendGetOptionsResponse(@NonNull AsyncHttpServerResponse response,
             @NonNull String optionsResponse) {
         sendJson(response, optionsResponse);
+    }
+
+    public void sendCheckStatusResponse(@NonNull AsyncHttpServerResponse response,
+                                       @NonNull String checkStatusResponse) {
+
+        WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+        int ip = wifiManager.getConnectionInfo().getIpAddress();
+        String ipaddress = Formatter.formatIpAddress(ip);
+        try {
+            JSONObject jsonResponse = new JSONObject(checkStatusResponse);
+            JSONObject results = jsonResponse.getJSONObject("results");
+            String fileUrl = results.getString("fileUrl").replace("127.0.0.1:8080", ipaddress);
+            String blurredFileUrl = results.getString("blurredFileUrl").replace("127.0.0.1:8080", ipaddress);
+            results.put("fileUrl", fileUrl);
+            results.put("blurredFileUrl", blurredFileUrl);
+            jsonResponse.put("results", results);
+            jsonResponse.put("name", CommandsName.CHECK_STATUS);
+            sendJson(response, jsonResponse.toString());
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     public void sendPreviewPicture(@NonNull AsyncHttpServerResponse response, byte[] data) {
@@ -330,6 +375,7 @@ public class WebServer {
 
     private void sendJson(@NonNull AsyncHttpServerResponse response, String json) {
         response.getHeaders().set(CONTENT_TYPE_OPTIONS, NOSNIFF);
+        response.getHeaders().set(CORS_OPTIONS, "*");
         response.send(APPLICATION_JSON, json);
     }
 
