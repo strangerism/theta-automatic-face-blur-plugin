@@ -15,6 +15,7 @@
  */
 package com.theta360.automaticfaceblur.network;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
@@ -261,13 +262,15 @@ public class WebServer {
                                        @NonNull String checkStatusResponse) {
 
         WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
-        int ip = wifiManager.getConnectionInfo().getIpAddress();
-        String ipaddress = Formatter.formatIpAddress(ip);
+        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
+        //String ipaddress = Formatter.formatIpAddress(ip);
+        @SuppressLint("DefaultLocale") final String formattedIpAddress = String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff), (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
+
         try {
             JSONObject jsonResponse = new JSONObject(checkStatusResponse);
             JSONObject results = jsonResponse.getJSONObject("results");
-            String fileUrl = results.getString("fileUrl").replace("127.0.0.1:8080", ipaddress);
-            String blurredFileUrl = results.getString("blurredFileUrl").replace("127.0.0.1:8080", ipaddress);
+            String fileUrl = results.getString("fileUrl").replace("127.0.0.1:8080", formattedIpAddress);
+            String blurredFileUrl = results.getString("blurredFileUrl").replace("127.0.0.1:8080", formattedIpAddress);
             results.put("fileUrl", fileUrl);
             results.put("blurredFileUrl", blurredFileUrl);
             jsonResponse.put("results", results);

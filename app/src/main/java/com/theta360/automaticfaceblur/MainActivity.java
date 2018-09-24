@@ -33,6 +33,7 @@ import com.theta360.automaticfaceblur.network.model.values.Status;
 import com.theta360.automaticfaceblur.task.CheckImageStatusTask;
 import com.theta360.automaticfaceblur.task.GetOptionsTask;
 import com.theta360.automaticfaceblur.task.ImageProcessorTask;
+import com.theta360.automaticfaceblur.task.ImageUploadTask;
 import com.theta360.automaticfaceblur.task.SetOptionsTask;
 import com.theta360.automaticfaceblur.task.ShowLiveViewTask;
 import com.theta360.automaticfaceblur.task.TakePictureTask;
@@ -57,6 +58,7 @@ public class MainActivity extends PluginActivity {
             Environment.DIRECTORY_DCIM).getPath();
     private TakePictureTask mTakePictureTask;
     private ImageProcessorTask mImageProcessorTask;
+    private ImageUploadTask mImageUploadTask;
     private byte[] mPreviewByteArray;
     private SetOptionsTask mSetOptionsTask;
     private GetOptionsTask mGetOptionsTask;
@@ -251,6 +253,28 @@ public class MainActivity extends PluginActivity {
     };
 
     /**
+     * ImageUploadTask Callback.
+     */
+    ImageUploadTask.Callback mImageUploadTaskCallback = new ImageUploadTask.Callback() {
+        @Override
+        public void onSendCommand(String responseData, AsyncHttpServerResponse response,
+                                  CommandsRequest commandsRequest,
+                                  Errors errors) {
+            if (mWebServer != null && response != null && commandsRequest != null) {
+                CommandsName commandsName = commandsRequest.getCommandsName();
+                if (errors == null) {
+                    CommandsResponse commandsResponse = new CommandsResponse(commandsName,
+                            State.DONE);
+                    mWebServer.sendCommandsResponse(response, commandsResponse);
+                } else {
+                    mWebServer.sendError(response, errors, commandsName);
+                }
+                mImageUploadTask = null;
+            }
+        }
+    };
+
+    /**
      * ShowLiveViewTask Callback.
      */
     ShowLiveViewTask.Callback mShowLiveViewTaskCallback = new ShowLiveViewTask.Callback() {
@@ -402,6 +426,17 @@ public class MainActivity extends PluginActivity {
                     } else {
                         mWebServer.sendError(response, Errors.DEVICE_BUSY, commandsName);
                         mCheckImageStatusTask = null;
+                    }
+                    break;
+                case UPLOAD_IMAGE:
+                    if (mTakePictureTask == null && mImageProcessorTask == null
+                            && mGetOptionsTask == null && mImageUploadTask == null) {
+                        mImageUploadTask = new ImageUploadTask(mImageUploadTaskCallback, response,
+                                commandsRequest);
+                        mImageUploadTask.execute();
+                    } else {
+                        mWebServer.sendError(response, Errors.DEVICE_BUSY, commandsName);
+                        mImageUploadTask = null;
                     }
                     break;
                 default:

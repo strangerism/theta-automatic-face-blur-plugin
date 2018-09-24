@@ -7,6 +7,7 @@ public enum CommandsName {
     TAKE_PICTURE("camera.takePicture"),
     GET_STATUS("camera.getStatus"),
     CHECK_IMAGE_STATUS("camera.image.checkStatus"),
+    UPLOAD_IMAGE("camera.image.upload"),
     COMMANDS_EXECUTE("camera.commands.execute"),
     SET_OPTIONS("camera.setOptions"),
     GET_OPTIONS("camera.getOptions"),
